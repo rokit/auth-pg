@@ -31,21 +31,25 @@ fn get_users(
     pool: web::Data<r2d2::Pool<PostgresConnectionManager>>,
 ) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
     actix_web::web::block(move || {
-        let mut res: String = "".to_owned();
-        let conn = pool.get()?;
+        let mut users: Vec<String> = Vec::new();
 
+        let conn = pool.get()?;
         for row in &conn.query("SELECT username FROM users;", &[])? {
             let username: String = row.get(0);
-            res = format!("{}Found person: {}\n", res, username);
+            users.push(username);
         }
 
-        if &res == "" {
-            Err(failure::err_msg("No results".to_string()))
+        if users.is_empty() {
+            Err(failure::err_msg("Nahhhhhhh".to_string()))
         } else {
-            Ok(res)
+            let json_users = serde_json::to_string(&users)?;
+            Ok(json_users)
         }
     })
-    .from_err()
+    .map_err(|err| {
+        println!("get_users: {}", err);
+        actix_web::Error::from(failure::err_msg("No results".to_string()))
+    })
     .and_then(|res| {
         HttpResponse::Ok()
             .content_type("application/json")
