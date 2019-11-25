@@ -1,12 +1,12 @@
 use actix_files as fs;
 use actix_web::{guard, http, middleware, web, App, HttpRequest, HttpResponse, HttpServer};
+use failure::Error;
 use futures::Future;
-use std::env;
 use r2d2_postgres::r2d2;
 use r2d2_postgres::PostgresConnectionManager;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use failure::Error;
+use std::env;
 
 fn p404() -> Result<fs::NamedFile, Error> {
     Ok(fs::NamedFile::open("static/404.html")?.set_status_code(http::StatusCode::NOT_FOUND))
@@ -41,6 +41,7 @@ impl User {
         return true;
     }
 }
+
 fn get_users(
     pool: web::Data<r2d2::Pool<PostgresConnectionManager>>,
 ) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
@@ -76,18 +77,20 @@ fn add_user(
     user: web::Json<User>,
     pool: web::Data<r2d2::Pool<PostgresConnectionManager>>,
 ) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
-
     actix_web::web::block(move || {
         if !user.is_valid() {
             return Err(failure::err_msg("User not valid".to_string()));
         }
 
         let conn = pool.get()?;
-        let rows_updated = conn.execute("INSERT INTO users (email, username, pw) VALUES ($1, $2, $3)", &[&user.email, &user.username, &user.pw]);
+        let rows_updated = conn.execute(
+            "INSERT INTO users (email, username, pw) VALUES ($1, $2, $3)",
+            &[&user.email, &user.username, &user.pw],
+        );
 
         match rows_updated {
             Ok(num) => Ok(num),
-            Err(err) => Err(failure::err_msg(err.to_string()))
+            Err(err) => Err(failure::err_msg(err.to_string())),
         }
     })
     .map_err(|err| {
@@ -105,7 +108,8 @@ fn add_user(
 
 fn main() {
     let database_url = env::var("STORYDB_URL").expect("the database url must be set");
-    let manager = PostgresConnectionManager::new(database_url, r2d2_postgres::TlsMode::None).unwrap();
+    let manager =
+        PostgresConnectionManager::new(database_url, r2d2_postgres::TlsMode::None).unwrap();
     let pool = r2d2::Pool::new(manager).unwrap();
 
     HttpServer::new(move || {
@@ -116,7 +120,7 @@ fn main() {
                 web::scope("/story")
                     // .default_service(web::get().to_async(unsplash_get))
                     .route("/get-users", web::get().to_async(get_users))
-                    .route("/add-user", web::post().to_async(add_user))
+                    .route("/add-user", web::post().to_async(add_user)),
             )
             .service(fs::Files::new("/", "static/build").index_file("index.html"))
             .default_service(
