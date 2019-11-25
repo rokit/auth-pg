@@ -21,12 +21,26 @@ fn get_server_port() -> u16 {
 
 #[derive(Serialize, Deserialize)]
 struct User {
-    id: i32,
+    id: Option<i32>,
     email: String,
     username: String,
     pw: String,
 }
 
+impl User {
+    fn is_valid(&self) -> bool {
+        if self.username == "" {
+            return false;
+        }
+        if self.email == "" {
+            return false;
+        }
+        if self.pw == "" {
+            return false;
+        }
+        return true;
+    }
+}
 fn get_users(
     pool: web::Data<r2d2::Pool<PostgresConnectionManager>>,
 ) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
@@ -40,7 +54,7 @@ fn get_users(
         }
 
         if users.is_empty() {
-            Err(failure::err_msg("Nahhhhhhh".to_string()))
+            Err(failure::err_msg("Nahhhhhhh".to_owned()))
         } else {
             let json_users = serde_json::to_string(&users)?;
             Ok(json_users)
@@ -48,43 +62,51 @@ fn get_users(
     })
     .map_err(|err| {
         println!("get_users: {}", err);
-        actix_web::Error::from(failure::err_msg("No results".to_string()))
+        actix_web::Error::from(failure::err_msg("No results".to_owned()))
     })
     .and_then(|res| {
         HttpResponse::Ok()
             .content_type("application/json")
-            .body(res.to_string())
+            .body(res.to_owned())
     })
 }
 
-// fn add_user(
-//     req: HttpRequest,
-//     required: web::Query<User>,
-//     conn: Connection,
-// ) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
-//     actix_web::web::block(move || {
-//         let me = User {
-//             id: 0,
-//             email: "a@a.com".to_owned(),
-//             username: "flam".to_owned(),
-//             pw: "asdf".to_owned(),
-//         };
-//         conn.execute("INSERT INTO users (email, username, pw) VALUES ($1, $2, $3)",
-//                      &[&me.email, &me.username, &me.pw])
-//     })
-//     .from_err()
-//     .and_then(|res| {
-//         HttpResponse::Ok()
-//             .content_type("application/json")
-//             .body(res.to_string())
-//     })
-// }
+fn add_user(
+    req: HttpRequest,
+    user: web::Json<User>,
+    pool: web::Data<r2d2::Pool<PostgresConnectionManager>>,
+) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
+
+    actix_web::web::block(move || {
+        if !user.is_valid() {
+            return Err(failure::err_msg("User not valid".to_string()));
+        }
+
+        let conn = pool.get()?;
+        let rows_updated = conn.execute("INSERT INTO users (email, username, pw) VALUES ($1, $2, $3)", &[&user.email, &user.username, &user.pw]);
+
+        match rows_updated {
+            Ok(num) => Ok(num),
+            Err(err) => Err(failure::err_msg(err.to_string()))
+        }
+    })
+    .map_err(|err| {
+        println!("add_user: {}", err);
+        let json_error = serde_json::to_string("0").unwrap();
+        actix_web::Error::from(failure::err_msg(json_error))
+    })
+    .and_then(|res| {
+        let res_json = serde_json::to_string(&res.to_owned()).unwrap_or("".to_owned());
+        HttpResponse::Ok()
+            .content_type("application/json")
+            .body(res_json)
+    })
+}
 
 fn main() {
     let database_url = env::var("STORYDB_URL").expect("the database url must be set");
     let manager = PostgresConnectionManager::new(database_url, r2d2_postgres::TlsMode::None).unwrap();
     let pool = r2d2::Pool::new(manager).unwrap();
-    // let conn = Connection::connect(database_url, TlsMode::None).unwrap();
 
     HttpServer::new(move || {
         App::new()
@@ -94,7 +116,7 @@ fn main() {
                 web::scope("/story")
                     // .default_service(web::get().to_async(unsplash_get))
                     .route("/get-users", web::get().to_async(get_users))
-                    // .route("/add-user", web::post().to_async(add_user))
+                    .route("/add-user", web::post().to_async(add_user))
             )
             .service(fs::Files::new("/", "static/build").index_file("index.html"))
             .default_service(

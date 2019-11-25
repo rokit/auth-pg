@@ -1,33 +1,26 @@
-import React, {useState} from 'react';
-import './App.css';
+import React from "react";
+import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
+import Chat from "./pages/Chat";
+import Header from "./components/Header";
+import SignupForm from "./pages/SignupForm";
+
+import "./App.css";
 
 function App() {
-  const [lineInput, setLineInput] = useState("");
-  const [messages, setMessages] = useState([]);
-
-  const onLineInputChange = (e) => {
-    setLineInput(e.target.value);
-  }
-
-  const onLineInputSubmit = (e) => {
-    e.preventDefault();
-    setMessages([lineInput, ...messages]);
-  }
-
   return (
-    <div className="app">
-      <header>
-      </header>
-      <form onSubmit={onLineInputSubmit}>
-        <label for="line-input">Line: </label>
-        <input id="line-input" value={lineInput} onChange={onLineInputChange} />
-      </form>
-      <section id="messages">
-        {messages.map((message) => {
-          return <p>{message}</p>;
-        })}
-      </section>
-    </div>
+    <Router>
+      <div className="app">
+        <Header />
+        <Switch>
+          <Route exact path="/">
+            <Chat />
+          </Route>
+          <Route exact path="/signup">
+            <SignupForm />
+          </Route>
+        </Switch>
+      </div>
+    </Router>
   );
 }
 
