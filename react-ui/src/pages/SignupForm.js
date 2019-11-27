@@ -18,8 +18,17 @@ function SignupForm() {
     });
   }, []);
 
-  const onGoogleSignIn = async user => {
-    console.log("user", user);
+  const onGoogleSignIn = async googleUser => {
+    console.log("googleUser", googleUser);
+    let id_token = googleUser.getAuthResponse().id_token;
+    let res = await fetch(`/auth/google`, {
+      method: "POST",
+      body: JSON.stringify({id_token}),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    console.log('token res', res);
   };
 
   const onChange = e => {
