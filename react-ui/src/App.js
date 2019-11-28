@@ -4,6 +4,7 @@ import Chat from "./pages/Chat";
 import Header from "./components/Header";
 import SignupForm from "./pages/SignupForm";
 
+import "normalize.css";
 import "./App.css";
 
 function App() {

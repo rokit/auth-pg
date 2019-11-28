@@ -1,18 +1,15 @@
 import React from "react";
 import { NavLink } from 'react-router-dom'
+import "./Header.css";
 
 function Header() {
   return (
     <>
       <header>
-        <nav className="main-nav">
-          <NavLink
-            exact
+        <h1><NavLink exact
             to="/"
-            activeClassName="active"
-          >
-            <span>Home</span>
-          </NavLink>
+            activeClassName="active">Story Game</NavLink></h1>
+        <nav className="main-nav">
           <NavLink
             to="/signup"
             activeClassName="active"

@@ -81,7 +81,7 @@ fn get_users(
 }
 
 fn add_user(
-    req: HttpRequest,
+    _req: HttpRequest,
     user: web::Json<User>,
     pool: web::Data<r2d2::Pool<PostgresConnectionManager>>,
 ) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
@@ -115,18 +115,35 @@ fn add_user(
 }
 
 fn auth_google(
-    req: HttpRequest,
+    _req: HttpRequest,
     token: web::Json<GoogleToken>,
     pool: web::Data<r2d2::Pool<PostgresConnectionManager>>,
     google: web::Data<auth_google::GoogleSignin>,
 ) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
     actix_web::web::block(move || {
-        if google.is_valid_token(&token.id_token)? {
-            println!("auth_google: user authenticated");
-            Ok(())
+        let token_data = google.decode_token(&token.id_token)?;
+
+        let conn = pool.get()?;
+        let mut username: String = "".to_owned();
+        for row in &conn.query("
+            SELECT username FROM users
+            WHERE email=$1 AND username=$2;", &[&token_data.email, &token_data.name])? {
+            username = row.get(0);
+            break;
+        }
+
+        if username == "" {
+            let rows_updated = conn.execute(
+                "INSERT INTO users (email, username, pw) VALUES ($1, $2, $3)",
+                &[&token_data.email, &token_data.name, &""],
+            );
+
+            match rows_updated {
+                Ok(num) => Ok(num),
+                Err(err) => Err(failure::err_msg(err.to_string())),
+            }
         } else {
-            println!("auth_google: user failed authenticatication");
-            Err(failure::err_msg("wha".to_string()))
+            Ok(1)
         }
     })
     .map_err(|err| {

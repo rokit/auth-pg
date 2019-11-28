@@ -5,6 +5,11 @@ function SignupForm() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState({
+    email: "",
+    username: "",
+    password: ""
+  });
 
   useEffect(() => {
     if (!window.gapi) return;
@@ -23,12 +28,13 @@ function SignupForm() {
     let id_token = googleUser.getAuthResponse().id_token;
     let res = await fetch(`/auth/google`, {
       method: "POST",
-      body: JSON.stringify({id_token}),
+      body: JSON.stringify({ id_token }),
       headers: {
         "Content-Type": "application/json"
       }
     });
-    console.log('token res', res);
+    let json = await res.json();
+    console.log("json response", json);
   };
 
   const onChange = e => {
@@ -71,36 +77,55 @@ function SignupForm() {
   };
 
   return (
-    <>
-      <form className="signup-form" onSubmit={onSubmit}>
-        <div>
-          <label>Email:</label>
-          <input type="text" name="email" value={email} onChange={onChange} />
-        </div>
-        <div>
-          <label>Username:</label>
-          <input
-            type="text"
-            name="username"
-            value={username}
-            onChange={onChange}
-          />
-        </div>
-        <div>
-          <label>Password:</label>
-          <input
-            type="password"
-            name="password"
-            value={password}
-            onChange={onChange}
-          />
-        </div>
-        <div>
-          <input type="submit" value="Submit" />
-        </div>
-      </form>
-      <div id="g-signin2"></div>
-    </>
+    <main className="main-sign">
+      <div className="content">
+        <section id="sign-up">
+          <form className="sign-form" onSubmit={onSubmit}>
+            <h2>Sign Up with Email</h2>
+            <div>
+              <input
+                type="text"
+                name="email"
+                value={email}
+                onChange={onChange}
+                placeholder="email"
+              />
+              <p className="email-error">{errors.email}</p>
+            </div>
+            <div>
+              <input
+                type="text"
+                name="username"
+                value={username}
+                onChange={onChange}
+                placeholder="username"
+              />
+              <p className="username-error">{errors.username}</p>
+            </div>
+            <div>
+              <input
+                type="password"
+                name="password"
+                value={password}
+                onChange={onChange}
+                placeholder="password"
+              />
+              <p className="password-error">{errors.password}</p>
+            </div>
+            <div>
+              <input type="submit" value="Submit" />
+            </div>
+          </form>
+        </section>
+
+        <section className="or">Or</section>
+
+        <section>
+          <h2>Sign Up with Social Media</h2>
+          <div id="g-signin2"></div>
+        </section>
+      </div>
+    </main>
   );
 }
 
