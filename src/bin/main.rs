@@ -9,7 +9,7 @@ use r2d2_postgres::r2d2;
 use r2d2_postgres::PostgresConnectionManager;
 use serde_json;
 use std::env;
-use story_game::auth_google;
+use auth_pg::auth_google;
 
 fn p404() -> Result<fs::NamedFile, Error> {
     Ok(fs::NamedFile::open("static/404.html")?.set_status_code(http::StatusCode::NOT_FOUND))
@@ -160,7 +160,7 @@ fn auth_google(
 }
 
 fn main() {
-    let database_url = env::var("STORYDB_URL").expect("the database url must be set");
+    let database_url = env::var("AUTHPG_URL").expect("the database url must be set");
     let google_secret_signin =
         env::var("GOOGLE_CLIENT_SECRET").expect("google client secret env variable not present");
 
@@ -175,7 +175,7 @@ fn main() {
             .data(google.clone())
             .wrap(middleware::Logger::default())
             .service(
-                web::scope("/story")
+                web::scope("/authpg")
                     // .default_service(web::get().to_async(unsplash_get))
                     .route("/get-users", web::get().to_async(get_users))
                     .route("/add-user", web::post().to_async(add_user)),

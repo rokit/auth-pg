@@ -1,5 +1,5 @@
 [package]
-name = "story-game"
+name = "auth-pg"
 version = "0.1.0"
 authors = ["luke <goodvibrato@gmail.com>"]
 edition = "2018"
